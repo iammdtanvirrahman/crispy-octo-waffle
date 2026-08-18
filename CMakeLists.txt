@@ -8,7 +8,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(voxel_core
     src/voxel_engine.cpp
     src/chunk_world.cpp
-    src/player_controller.cpp
 )
 target_include_directories(voxel_core PUBLIC src)
 target_compile_features(voxel_core PUBLIC cxx_std_20)
@@ -22,7 +21,7 @@ endif()
 add_executable(voxel_frontier src/main.cpp)
 target_link_libraries(voxel_frontier PRIVATE voxel_core)
 
-option(VOXEL_BUILD_VIEWER "Build the native OpenGL viewer" OFF)
+option(VOXEL_BUILD_VIEWER "Build the native OpenGL spectator viewer" OFF)
 if(VOXEL_BUILD_VIEWER)
   include(FetchContent)
   FetchContent_Declare(
@@ -47,4 +46,4 @@ if(VOXEL_BUILD_VIEWER)
   target_link_libraries(voxel_viewer PRIVATE voxel_core voxel_renderer)
 endif()
 
-# The same voxel_core library is intentionally suitable for a future Emscripten/WebAssembly build.
+# voxel_core is intentionally suitable for a future Emscripten/WebAssembly build.
