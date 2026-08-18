@@ -7,10 +7,6 @@
 #include <cstdint>
 #include <iostream>
 
-#if defined(VOXEL_NATIVE_GLFW)
-#include <GLFW/glfw3.h>
-#endif
-
 int main(int argc, char** argv) {
     std::uint64_t seed = 123456789ULL;
     if (argc > 1) {
@@ -39,9 +35,13 @@ int main(int argc, char** argv) {
         const auto now = clock::now();
         const float dt = std::min(0.05f, std::chrono::duration<float>(now - last).count());
         last = now;
-        (void)dt;
 
         renderer.pollEvents();
+        camera.mouseLook(renderer.mouseDX(), renderer.mouseDY());
+        renderer.clearMouseDelta();
+
+        // Movement/input will be added on the same controller layer next.
+        (void)dt;
         renderer.beginFrame();
         renderer.draw(camera, 1280.0f / 720.0f);
         renderer.endFrame();
