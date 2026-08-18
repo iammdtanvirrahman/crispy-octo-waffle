@@ -1,5 +1,6 @@
 #include "camera.hpp"
 #include "native_renderer.hpp"
+#include "player_controller.hpp"
 #include "voxel_engine.hpp"
 
 #include <algorithm>
@@ -27,6 +28,8 @@ int main(int argc, char** argv) {
 
     voxel::Camera camera;
     camera.position = {8.0f, 38.0f, 10.0f};
+    voxel::PlayerController controller;
+    voxel::InputState input;
     renderer.uploadMesh(mesh);
 
     using clock = std::chrono::steady_clock;
@@ -37,11 +40,15 @@ int main(int argc, char** argv) {
         last = now;
 
         renderer.pollEvents();
-        camera.mouseLook(renderer.mouseDX(), renderer.mouseDY());
+        input.setKey(87, renderer.keyDown(87));   // W
+        input.setKey(65, renderer.keyDown(65));   // A
+        input.setKey(83, renderer.keyDown(83));   // S
+        input.setKey(68, renderer.keyDown(68));   // D
+        input.setKey(32, renderer.keyDown(32));   // Space
+        input.setKey(340, renderer.keyDown(340)); // Left Shift
+        controller.update(dt, input, renderer.mouseDX(), renderer.mouseDY(), camera);
         renderer.clearMouseDelta();
 
-        // Movement/input will be added on the same controller layer next.
-        (void)dt;
         renderer.beginFrame();
         renderer.draw(camera, 1280.0f / 720.0f);
         renderer.endFrame();
