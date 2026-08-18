@@ -24,6 +24,8 @@ target_link_libraries(voxel_frontier PRIVATE voxel_core)
 option(VOXEL_BUILD_VIEWER "Build the native OpenGL viewer" OFF)
 if(VOXEL_BUILD_VIEWER)
   include(FetchContent)
+  find_package(OpenGL REQUIRED)
+
   FetchContent_Declare(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -38,7 +40,7 @@ if(VOXEL_BUILD_VIEWER)
   add_library(voxel_renderer src/native_renderer.cpp)
   target_include_directories(voxel_renderer PUBLIC src)
   target_compile_definitions(voxel_renderer PRIVATE VOXEL_NATIVE_GLFW=1)
-  target_link_libraries(voxel_renderer PRIVATE glfw)
+  target_link_libraries(voxel_renderer PRIVATE glfw OpenGL::GL)
   target_compile_features(voxel_renderer PUBLIC cxx_std_20)
 
   add_executable(voxel_viewer src/native_viewer.cpp)
