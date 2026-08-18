@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(voxel_core
     src/voxel_engine.cpp
+    src/chunk_world.cpp
 )
 target_include_directories(voxel_core PUBLIC src)
 target_compile_features(voxel_core PUBLIC cxx_std_20)
@@ -20,5 +21,12 @@ endif()
 add_executable(voxel_frontier src/main.cpp)
 target_link_libraries(voxel_frontier PRIVATE voxel_core)
 
-# Browser target is planned as a separate Emscripten build so the same
-# voxel_core library can later be compiled to WebAssembly.
+# Rendering is deliberately separated from the voxel core. This lets the same
+# chunk/mesh data feed a native GPU renderer, an Emscripten/WebGL build, or a
+# future headless multiplayer server without coupling the simulation layer.
+option(VOXEL_BUILD_RENDERER "Build the optional native renderer" OFF)
+if(VOXEL_BUILD_RENDERER)
+  message(STATUS "Native renderer target reserved for the GPU backend")
+endif()
+
+# Browser target: compile voxel_core with Emscripten to WebAssembly/WebGL.
