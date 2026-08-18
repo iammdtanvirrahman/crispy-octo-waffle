@@ -1,28 +1,34 @@
-# Voxel World
+# Voxel Frontier
 
-A browser-based voxel survival game engine inspired by the sandbox-building genre, built for gradual expansion.
+A browser-based voxel survival game foundation, built for gradual expansion toward a full Minecraft-scale custom game.
 
-## Current foundation
-- First-person 3D voxel world
-- Procedural starter terrain
-- Grass, dirt, stone, wood and sand blocks
-- WASD movement and mouse look
-- Gravity and jumping
-- Block breaking and placement
+## Current browser build
+
+- 3D voxel terrain generated from a world seed
+- First-person mouse look and WASD movement
+- Sprint and crouch
+- Jump and basic collision
+- Seven placeable block types
+- Hold-to-mine blocks
+- Right-click block placement
 - Hotbar selection
-- Basic trees
+- Day/night cycle
+- Health/food HUD foundation
+- Local world save/load with automatic saving
+- F3 HUD toggle and P manual save
 - Performance-conscious Three.js renderer
 
-## Planned engine direction
-1. Chunk streaming and greedy/merged voxel meshing
-2. Better procedural terrain, caves, ores and biomes
-3. Robust player collision and block interaction
-4. Inventory, crafting and item entities
-5. Day/night cycle, lighting and weather
-6. Animals, hostile mobs and combat
-7. Save/load worlds with local persistence
-8. Multiplayer-ready world simulation
-9. Mobile/touch controls and controller support
-10. Custom systems beyond vanilla Minecraft
+## Planned architecture
 
-The architecture is intentionally designed so new gameplay systems can be added incrementally without replacing the whole client.
+The project is intentionally being grown in layers rather than as a one-off demo:
+
+1. Core voxel engine and chunk meshing
+2. Inventory, items and crafting
+3. Procedural caves, ores, water and biomes
+4. Lighting and better world streaming
+5. Mobs, AI, combat and survival systems
+6. Structures, villages and progression
+7. Multiplayer/network layer
+8. Optional Java/LWJGL desktop engine using the same gameplay concepts
+
+The browser build remains the easy-to-run version on GitHub Pages while the engine can later gain a native Java desktop implementation.
