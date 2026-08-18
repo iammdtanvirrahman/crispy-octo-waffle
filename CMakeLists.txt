@@ -21,12 +21,29 @@ endif()
 add_executable(voxel_frontier src/main.cpp)
 target_link_libraries(voxel_frontier PRIVATE voxel_core)
 
-# Rendering is deliberately separated from the voxel core. This lets the same
-# chunk/mesh data feed a native GPU renderer, an Emscripten/WebGL build, or a
-# future headless multiplayer server without coupling the simulation layer.
-option(VOXEL_BUILD_RENDERER "Build the optional native renderer" OFF)
-if(VOXEL_BUILD_RENDERER)
-  message(STATUS "Native renderer target reserved for the GPU backend")
+option(VOXEL_BUILD_VIEWER "Build the native OpenGL viewer" OFF)
+if(VOXEL_BUILD_VIEWER)
+  include(FetchContent)
+  FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+    GIT_SHALLOW TRUE
+  )
+  set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+  set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(glfw)
+
+  add_library(voxel_renderer src/native_renderer.cpp)
+  target_include_directories(voxel_renderer PUBLIC src)
+  target_compile_definitions(voxel_renderer PRIVATE VOXEL_NATIVE_GLFW=1)
+  target_link_libraries(voxel_renderer PRIVATE glfw)
+  target_compile_features(voxel_renderer PUBLIC cxx_std_20)
+
+  add_executable(voxel_viewer src/native_viewer.cpp)
+  target_compile_definitions(voxel_viewer PRIVATE VOXEL_NATIVE_GLFW=1)
+  target_link_libraries(voxel_viewer PRIVATE voxel_core voxel_renderer)
 endif()
 
-# Browser target: compile voxel_core with Emscripten to WebAssembly/WebGL.
+# The same voxel_core library is intentionally suitable for a future Emscripten/WebAssembly build.
