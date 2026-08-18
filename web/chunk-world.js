@@ -36,63 +36,52 @@ export class ChunkWorld{
     if(lz===0)this.enqueueRebuild(cx,cz-1); if(lz===CHUNK_SIZE-1)this.enqueueRebuild(cx,cz+1); return true;
   }
 
-  addQuad(p,n,col,ind,a,b,c,d,origin,du,dv){
-    const base=p.length/3; const pts=[origin,[origin[0]+du[0]*a,origin[1]+du[1]*a,origin[2]+du[2]*a],[origin[0]+du[0]*a+dv[0]*b,origin[1]+du[1]*a+dv[1]*b,origin[2]+du[2]*a+dv[2]*b],[origin[0]+dv[0]*b,origin[1]+dv[1]*b,origin[2]+dv[2]*b]];
-    for(const q of pts){p.push(q[0],q[1],q[2]);n.push(n[0]??0,n[1]??0,n[2]??0)}
-    ind.push(base,base+1,base+2,base,base+2,base+3);
-  }
-
   rebuildChunk(cx,cz){
     const c=this.ensureChunk(cx,cz);
     if(c.mesh){this.scene.remove(c.mesh);c.mesh.geometry.dispose();c.mesh.material.dispose();c.mesh=null}
     const p=[],normals=[],colors=[],ind=[];
-    const emit=(axis,positive,u,v,w,plane,iu,iv,du,dv,block)=>{
-      const nx=axis===0?(positive?1:-1):0,ny=axis===1?(positive?1:-1):0,nz=axis===2?(positive?1:-1):0;
-      const base=p.length/3;
-      const verts=[
-        [w[0]+du[0]*iu+dv[0]*iv,w[1]+du[1]*iu+dv[1]*iv,w[2]+du[2]*iu+dv[2]*iv],
-        [w[0]+du[0]*(iu+u)+dv[0]*iv,w[1]+du[1]*(iu+u)+dv[1]*iv,w[2]+du[2]*(iu+u)+dv[2]*iv],
-        [w[0]+du[0]*(iu+u)+dv[0]*(iv+v),w[1]+du[1]*(iu+u)+dv[1]*(iv+v),w[2]+du[2]*(iu+u)+dv[2]*(iv+v)],
-        [w[0]+du[0]*iu+dv[0]*(iv+v),w[1]+du[1]*iu+dv[1]*(iv+v),w[2]+du[2]*iu+dv[2]*(iv+v)]
-      ];
-      const cc=new THREE.Color(BLOCKS[block].color);
-      for(const q of verts){p.push(...q);normals.push(nx,ny,nz);colors.push(cc.r,cc.g,cc.b)}
-      if(positive) ind.push(base,base+1,base+2,base,base+2,base+3); else ind.push(base,base+2,base+1,base,base+3,base+2);
-    };
-
-    // Greedy rectangles for each axis. Mask entries are block ids, or 0 for no visible face.
     const dims=[CHUNK_SIZE,CHUNK_HEIGHT,CHUNK_SIZE];
     for(let axis=0;axis<3;axis++){
       const a1=(axis+1)%3,a2=(axis+2)%3;
       const uSize=dims[a1],vSize=dims[a2],wSize=dims[axis];
+      const duAxis=a1,dvAxis=a2;
       const mask=new Int16Array(uSize*vSize);
       for(let side=0;side<2;side++){
         for(let slice=0;slice<=wSize;slice++){
           for(let j=0;j<vSize;j++) for(let i=0;i<uSize;i++){
             const pos=[0,0,0],neg=[0,0,0];
-            pos[axis]=slice; pos[a1]=i; pos[a2]=j;
-            neg[axis]=slice-1; neg[a1]=i; neg[a2]=j;
-            const A=this.getBlock(cx*CHUNK_SIZE+pos[0],pos[1],cz*CHUNK_SIZE+pos[2]);
-            const B=this.getBlock(cx*CHUNK_SIZE+neg[0],neg[1],cz*CHUNK_SIZE+neg[2]);
+            pos[axis]=slice;pos[a1]=i;pos[a2]=j;
+            neg[axis]=slice-1;neg[a1]=i;neg[a2]=j;
+            const A=this.peekBlock(cx*CHUNK_SIZE+pos[0],pos[1],cz*CHUNK_SIZE+pos[2]);
+            const B=this.peekBlock(cx*CHUNK_SIZE+neg[0],neg[1],cz*CHUNK_SIZE+neg[2]);
             mask[j*uSize+i]=side===0?(solid(A)&&!solid(B)?A:0):(!solid(A)&&solid(B)?B:0);
           }
           for(let j=0;j<vSize;j++){
             for(let i=0;i<uSize;){
-              const block=mask[j*uSize+i]; if(!block){i++;continue}
-              let width=1; while(i+width<uSize&&mask[j*uSize+i+width]===block)width++;
-              let height=1; outer: while(j+height<vSize){for(let k=0;k<width;k++)if(mask[(j+height)*uSize+i+k]!==block)break outer;height++}
+              const block=mask[j*uSize+i];if(!block){i++;continue}
+              let width=1;while(i+width<uSize&&mask[j*uSize+i+width]===block)width++;
+              let height=1;outer:while(j+height<vSize){for(let k=0;k<width;k++)if(mask[(j+height)*uSize+i+k]!==block)break outer;height++}
               for(let y=0;y<height;y++)for(let x=0;x<width;x++)mask[(j+y)*uSize+i+x]=0;
-              const origin=[0,0,0];origin[axis]=slice;origin[a1]=i;origin[a2]=j;
-              const du=[0,0,0],dv=[0,0,0];du[a1]=width;dv[a2]=height;
-              const normalPositive=side===0;emit(axis,normalPositive,width,height,0,slice,i,j,du,dv,block);
+              const plane=side===0?slice:slice-1;
+              const origin=[0,0,0];origin[axis]=plane;origin[a1]=i;origin[a2]=j;
+              const du=[0,0,0],dv=[0,0,0];du[duAxis]=width;dv[dvAxis]=height;
+              const nx=axis===0?(side===0?1:-1):0,ny=axis===1?(side===0?1:-1):0,nz=axis===2?(side===0?1:-1):0;
+              const base=p.length/3;
+              const verts=[
+                [origin[0],origin[1],origin[2]],
+                [origin[0]+du[0],origin[1]+du[1],origin[2]+du[2]],
+                [origin[0]+du[0]+dv[0],origin[1]+du[1]+dv[1],origin[2]+du[2]+dv[2]],
+                [origin[0]+dv[0],origin[1]+dv[1],origin[2]+dv[2]]
+              ];
+              const cc=new THREE.Color(BLOCKS[block].color);
+              for(const q of verts){p.push(q[0]+cx*CHUNK_SIZE,q[1],q[2]+cz*CHUNK_SIZE);normals.push(nx,ny,nz);colors.push(cc.r,cc.g,cc.b)}
+              if(side===0)ind.push(base,base+1,base+2,base,base+2,base+3);else ind.push(base,base+2,base+1,base,base+3,base+2);
               i+=width;
             }
           }
         }
       }
     }
-    // Above emits local chunk coordinates; convert them to world coordinates after geometry creation.
-    for(let i=0;i<p.length;i+=3){p[i]+=cx*CHUNK_SIZE;p[i+2]+=cz*CHUNK_SIZE}
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.setIndex(ind);g.computeBoundingSphere();
     const m=new THREE.MeshLambertMaterial({vertexColors:true});c.mesh=new THREE.Mesh(g,m);c.mesh.userData={cx,cz};this.scene.add(c.mesh);c.dirty=false;
   }
