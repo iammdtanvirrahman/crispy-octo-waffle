@@ -119,12 +119,10 @@ struct NativeRenderer::Impl {
     GLFWwindow* window = nullptr;
     GLuint program = 0;
     GLMesh mesh{};
-    NativeRenderer* owner = nullptr;
 };
 
 NativeRenderer::NativeRenderer(int width, int height, std::string title)
     : impl_(std::make_unique<Impl>()) {
-    impl_->owner = this;
     if (!glfwInit()) return;
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -137,9 +135,11 @@ NativeRenderer::NativeRenderer(int width, int height, std::string title)
     glfwSetWindowUserPointer(impl_->window, this);
     glfwSetCursorPosCallback(impl_->window, [](GLFWwindow* w, double x, double y) {
         auto* self = static_cast<NativeRenderer*>(glfwGetWindowUserPointer(w));
-        static double lastX = x;
-        static double lastY = y;
         if (!self) return;
+        static double lastX = 0.0;
+        static double lastY = 0.0;
+        static bool first = true;
+        if (first) { lastX = x; lastY = y; first = false; }
         self->mouseDX_ += static_cast<float>(x - lastX);
         self->mouseDY_ += static_cast<float>(y - lastY);
         lastX = x;
@@ -171,6 +171,10 @@ void NativeRenderer::beginFrame() noexcept {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 void NativeRenderer::endFrame() noexcept { if (valid()) glfwSwapBuffers(impl_->window); }
+
+bool NativeRenderer::keyDown(int key) const noexcept {
+    return valid() && glfwGetKey(impl_->window, key) == GLFW_PRESS;
+}
 
 void NativeRenderer::uploadMesh(const Mesh& mesh) {
     if (!valid()) return;
@@ -220,6 +224,7 @@ void NativeRenderer::endFrame() noexcept {}
 void NativeRenderer::uploadMesh(const Mesh&) {}
 void NativeRenderer::draw(const Camera&, float) noexcept {}
 void NativeRenderer::pollEvents() noexcept {}
+bool NativeRenderer::keyDown(int) const noexcept { return false; }
 } // namespace voxel
 
 #endif
