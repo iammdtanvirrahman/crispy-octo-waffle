@@ -29,6 +29,7 @@ public:
     [[nodiscard]] float mouseDX() const noexcept { return mouseDX_; }
     [[nodiscard]] float mouseDY() const noexcept { return mouseDY_; }
     void clearMouseDelta() noexcept { mouseDX_ = mouseDY_ = 0.0f; }
+    [[nodiscard]] bool keyDown(int key) const noexcept;
 
 private:
     struct Impl;
