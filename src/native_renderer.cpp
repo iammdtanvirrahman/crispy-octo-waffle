@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstddef>
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -39,7 +40,6 @@ void matPerspective(float fovy, float aspect, float znear, float zfar, float* m)
 void matView(const Camera& c, float* m) {
     const float cy = std::cos(c.yaw), sy = std::sin(c.yaw);
     const float cp = std::cos(c.pitch), sp = std::sin(c.pitch);
-    // Column-major rotation matching OpenGL.
     const float r00 = cy,     r01 = sy * sp,  r02 = sy * cp;
     const float r10 = 0.0f,   r11 = cp,       r12 = -sp;
     const float r20 = -sy,    r21 = cy * sp,  r22 = cy * cp;
@@ -75,19 +75,16 @@ GLuint makeProgram() {
         layout(location=3) in float aBlock;
         uniform mat4 uVP;
         out vec3 vNormal;
-        out vec2 vUV;
         flat out int vBlock;
         void main(){
             gl_Position = uVP * vec4(aPos,1.0);
             vNormal = aNormal;
-            vUV = aUV;
             vBlock = int(aBlock);
         }
     )glsl";
     static constexpr const char* fs = R"glsl(
         #version 330 core
         in vec3 vNormal;
-        in vec2 vUV;
         flat in int vBlock;
         out vec4 FragColor;
         vec3 palette(int b){
@@ -99,13 +96,13 @@ GLuint makeProgram() {
             if(b==6) return vec3(0.22,0.55,0.27);
             if(b==7) return vec3(0.45,0.78,0.80);
             if(b==8) return vec3(0.17,0.15,0.12);
+            if(b==9) return vec3(0.28,0.48,0.18);
             return vec3(0.65);
         }
         void main(){
             vec3 n = normalize(vNormal);
             float light = 0.55 + 0.45 * max(dot(n, normalize(vec3(0.35,0.8,0.2))), 0.0);
-            vec3 c = palette(vBlock) * light;
-            FragColor = vec4(c, 1.0);
+            FragColor = vec4(palette(vBlock) * light, 1.0);
         }
     )glsl";
     GLuint p = glCreateProgram();
@@ -122,10 +119,12 @@ struct NativeRenderer::Impl {
     GLFWwindow* window = nullptr;
     GLuint program = 0;
     GLMesh mesh{};
+    NativeRenderer* owner = nullptr;
 };
 
 NativeRenderer::NativeRenderer(int width, int height, std::string title)
     : impl_(std::make_unique<Impl>()) {
+    impl_->owner = this;
     if (!glfwInit()) return;
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -134,6 +133,18 @@ NativeRenderer::NativeRenderer(int width, int height, std::string title)
     if (!impl_->window) { glfwTerminate(); return; }
     glfwMakeContextCurrent(impl_->window);
     glfwSwapInterval(0);
+    glfwSetInputMode(impl_->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetWindowUserPointer(impl_->window, this);
+    glfwSetCursorPosCallback(impl_->window, [](GLFWwindow* w, double x, double y) {
+        auto* self = static_cast<NativeRenderer*>(glfwGetWindowUserPointer(w));
+        static double lastX = x;
+        static double lastY = y;
+        if (!self) return;
+        self->mouseDX_ += static_cast<float>(x - lastX);
+        self->mouseDY_ += static_cast<float>(y - lastY);
+        lastX = x;
+        lastY = y;
+    });
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -184,7 +195,6 @@ void NativeRenderer::draw(const Camera& camera, float aspect) noexcept {
     float p[16], v[16], vp[16];
     matPerspective(camera.fov * 3.14159265f / 180.0f, std::max(aspect,0.01f), camera.nearPlane, camera.farPlane, p);
     matView(camera, v);
-    // Minimal 4x4 multiplication: vp = p * v.
     for(int col=0; col<4; ++col) for(int row=0; row<4; ++row){
         vp[col*4+row]=0;
         for(int k=0;k<4;++k) vp[col*4+row]+=p[k*4+row]*v[col*4+k];
